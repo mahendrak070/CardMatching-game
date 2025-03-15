@@ -17,9 +17,35 @@ class MyApp extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: GameScreen(),
+    return MaterialApp(
+      title: 'Card Matching',
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.lightBlue,
+        scaffoldBackgroundColor: Colors.grey[200],
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFB3E5FC),
+          elevation: 4,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF81D4FA),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(30)),
+            ),
+          ),
+        ),
+      ),
+      home: const GameScreen(),
     );
   }
 }
@@ -33,7 +59,7 @@ class GameScreen extends StatelessWidget {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Card Matching Game'),
+        title: const Text('Card Matching'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -52,23 +78,29 @@ class GameScreen extends StatelessWidget {
           ),
           if (gameState.isGameWon())
             Container(
-              color: Colors.black54,
+              color: Colors.black45,
               child: Center(
-                child: Consumer<GameState>(
-                  builder: (context, gameState, child) => Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'You Win!',
-                        style: TextStyle(fontSize: 30, color: Colors.white),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'You Win!',
+                      style: TextStyle(
+                        fontSize: 36,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () => gameState.resetGame(),
-                        child: const Text('Restart Game'),
-                      ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(height: 20),
+                    Consumer<GameState>(
+                      builder: (context, gameState, child) {
+                        return ElevatedButton(
+                          onPressed: () => gameState.resetGame(),
+                          child: const Text('Restart Game'),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -85,11 +117,11 @@ class CardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final gameState = Provider.of<GameState>(context);
     return GridView.builder(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4, // 4x4 grid
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
+        crossAxisCount: 4, // 4x4 grid => 16 cards total
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
       ),
       itemCount: gameState.cards.length,
       itemBuilder: (context, index) {
@@ -127,27 +159,49 @@ class CardWidget extends StatelessWidget {
             },
           );
         },
-        // Use a unique key based on face-up state so that AnimatedSwitcher animates correctly.
+        // Using a unique key based on card state ensures proper animation.
         child: card.isFaceUp
             ? Container(
                 key: const ValueKey(true),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blueAccent),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFF9C4), Color(0xFFFFF59D)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.4),
+                      offset: const Offset(2, 4),
+                      blurRadius: 4,
+                    )
+                  ],
+                  border: Border.all(color: const Color(0xFFFFF176)),
                 ),
                 child: Center(
                   child: Text(
                     card.front,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
               )
             : Container(
                 key: const ValueKey(false),
                 decoration: BoxDecoration(
-                  color: Colors.blueGrey,
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF81D4FA),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.4),
+                      offset: const Offset(2, 4),
+                      blurRadius: 4,
+                    )
+                  ],
                 ),
                 child: const Center(
                   child: Text(
@@ -165,7 +219,7 @@ class CardModel {
   final String front;
   final String back;
   bool isFaceUp;
-  bool isMatched; // Marks whether a card has been matched
+  bool isMatched;
   
   CardModel({
     required this.front,
@@ -188,7 +242,7 @@ class GameState extends ChangeNotifier {
     _startTimer();
   }
   
-  // Generates 8 pairs (16 cards total) and shuffles them.
+  // Initialize exactly 16 cards (8 pairs)
   void _initializeCards() {
     cards.clear();
     faceUpCards.clear();
@@ -205,7 +259,6 @@ class GameState extends ChangeNotifier {
   }
   
   void flipCard(CardModel card) {
-    // Ignore tap if the card is already face-up or matched, or if two cards are already face-up.
     if (card.isFaceUp || card.isMatched || faceUpCards.length == 2) return;
     
     card.isFaceUp = true;
@@ -223,17 +276,15 @@ class GameState extends ChangeNotifier {
     CardModel card2 = faceUpCards[1];
     
     if (card1.front == card2.front) {
-      // When a match is found, mark cards as matched.
+      // Leave matched cards face up.
       card1.isMatched = true;
       card2.isMatched = true;
       score += 10;
-      // Do not shuffle matched cards so they remain in their original positions.
     } else {
-      // If not a match, flip both cards back over and deduct score.
+      // Flip back and deduct points.
       card1.isFaceUp = false;
       card2.isFaceUp = false;
       score = max(score - 5, 0);
-      // Shuffle only the unmatched cards while preserving the positions of matched ones.
       _shuffleUnmatched();
     }
     faceUpCards.clear();
@@ -244,13 +295,11 @@ class GameState extends ChangeNotifier {
     }
   }
   
-  // Shuffle only the cards that haven't been matched.
+  // Shuffle only unmatched cards to keep matched ones fixed.
   void _shuffleUnmatched() {
-    // Extract unmatched cards.
     List<CardModel> unmatched = cards.where((card) => !card.isMatched).toList();
     unmatched.shuffle();
     int unmatchedIndex = 0;
-    // Reassign the positions for only unmatched cards.
     for (int i = 0; i < cards.length; i++) {
       if (!cards[i].isMatched) {
         cards[i] = unmatched[unmatchedIndex];
@@ -260,7 +309,6 @@ class GameState extends ChangeNotifier {
   }
   
   bool isGameWon() {
-    // The game is won when all cards are matched.
     return cards.every((card) => card.isMatched);
   }
   
@@ -297,10 +345,14 @@ class TimerWidget extends StatelessWidget {
     return Consumer<GameState>(
       builder: (context, gameState, child) {
         return Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(12.0),
           child: Text(
             'Time: ${gameState.elapsedSeconds} sec',
-            style: const TextStyle(fontSize: 20),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
           ),
         );
       },
@@ -316,10 +368,14 @@ class ScoreWidget extends StatelessWidget {
     return Consumer<GameState>(
       builder: (context, gameState, child) {
         return Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(12.0),
           child: Text(
             'Score: ${gameState.score}',
-            style: const TextStyle(fontSize: 20),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
           ),
         );
       },
